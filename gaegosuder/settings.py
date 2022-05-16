@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 
-from my_settings import SECRET_KEY, DATABASES
+from my_settings import SECRET_KEY, DATABASES, LOGGING, AWS_S3_ACCESS_KEY_ID, AWS_S3_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME
 
 import pymysql
 
@@ -156,3 +156,5 @@ CORS_ALLOW_HEADERS = (
 )
 
 APPEND_SLASH = False
+
+LOGGING = LOGGING
