@@ -1,11 +1,14 @@
 import json
 import datetime
 from datetime import timedelta
+from unicodedata import category
 
 from django.http      import JsonResponse
 from django.views     import View
 from django.db.models import Q, F, Case, When,ExpressionWrapper,DateTimeField, Prefetch
 from django.db import transaction
+from django_mysql.models import GroupConcat
+
 
 from projects.models import *
 from commons.models import *
@@ -21,8 +24,8 @@ from commons.models  import Image
 from users.models import User
 
 
-# from core.storage import MyS3Client
-# from django.conf import settings
+from core.storage import MyS3Client
+from django.conf import settings
 
 from core.utils import query_debugger
 
@@ -36,7 +39,8 @@ class ProjectsListView(View):
         apply_status_id = request.GET.get("apply_status_id",None)
         start_recruit   = request.GET.get("start_recruit", None)
         end_recruit     = request.GET.get("end_recruit", None)
-        stack_ids       = request.GET.getlist("stack_ids", None)
+        category_ids_q  = request.GET.getlist("category_ids", None)
+        stack_ids_q     = request.GET.getlist("stack_ids", None)
         offset          = int(request.GET.get("offset", 0))
         limit           = int(request.GET.get("limit", 10))
 
@@ -56,8 +60,15 @@ class ProjectsListView(View):
         if region_id:
             q &= Q(region_id=region_id)
 
-        if stack_ids:
-            q &= Q(projectstack__technology_stack_id__in=stack_ids)
+        if stack_ids_q:
+            q &= Q(stack_ids__in=','.join(stack_ids_q))
+            # q &= Q(projectstack__technology_stack_id__in=stack_ids_q)
+            # for stack_id in stack_ids:
+        #         q &= Q(projectstack__technology_stack_id=stack_id)
+        #         print(q)
+
+        if category_ids_q:
+            q &= Q(project_categories_id__in=stack_ids_q)
 
         if apply_status_id:
             q &= Q(projectapply__project_apply_status_id=apply_status_id)\
@@ -80,7 +91,7 @@ class ProjectsListView(View):
 
         order = {
             "recent_created": "-created_at",
-            "deadline"      : "-end_recruit",
+            "deadline"      : "-end_recruit"
         }
         
         projects = Project.objects\
@@ -88,9 +99,26 @@ class ProjectsListView(View):
             .prefetch_related(
                 Prefetch("image_set", queryset=Image.objects.filter(image_type__title=THUMBNAIL),to_attr="thumbnails"),
                 Prefetch("projectstack_set", queryset=ProjectStack.objects.select_related("technology_stack"), to_attr="project_stacks"))\
+            .annotate(stack_ids=GroupConcat("projectstack__technology_stack_id"))\
             .filter(q)\
             .order_by(order[order_condition])\
             [offset:offset + limit]
+
+
+
+        print(q)
+
+
+
+        # projects = Project.objects\
+        #     .select_related("project_category")\
+        #     .prefetch_related(
+        #         Prefetch("image_set", queryset=Image.objects.filter(image_type__title=THUMBNAIL),to_attr="thumbnails"),
+        #         Prefetch("projectstack_set", queryset=ProjectStack.objects.select_related("technology_stack"), to_attr="project_stacks"))\
+        #     .filter(q)\
+        #     .order_by(order[order_condition])\
+        #     # [offset:offset + limit]
+        # print(projects)
 
         results=[]
 
@@ -145,6 +173,8 @@ class ProjectEnrollmentView(View):
         apply_stacks_ids          = data.get("apply_stacks_ids",[1])
         image_url = data["image_url"]
         is_private = data["is_private"]
+        # print(request.POST)
+        # print(request.FILES)
 
         # file = request.FILES['project_thumbnail']
         # s3_client = MyS3Client(settings.AWS_S3_ACCESS_KEY_ID, settings.AWS_S3_SECRET_ACCESS_KEY, settings.AWS_STORAGE_BUCKET_NAME) 
@@ -274,7 +304,7 @@ class ProjectDetailView(View):
                         queryset=ProjectStack.objects.select_related("technology_stack"),
                         to_attr="project_stacks"),
                 Prefetch("projectapply_set",
-                        queryset=ProjectApply.objects.select_related("user").filter(project_apply_status__type=UserType.creator.value),
+                        queryset=ProjectApply.objects.select_related("user", "user__portfolio").filter(project_apply_status__type=UserType.creator.value),
                         to_attr="creators_apply"),
                 Prefetch("projectapply_set",
                         queryset=ProjectApply.objects.select_related("user").filter(project_apply_status__type=UserType.applicant.value),
