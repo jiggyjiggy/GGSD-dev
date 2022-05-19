@@ -30,6 +30,14 @@ class MyS3Client:
         except:
             return None
 
+    # def download(self, file):
+    #     file_id=file
+    #     self.s3_client.download_fileobj(
+    #             self.bucket_name,
+    #             file,
+    #             file_id,
+    #         )
+    
     def delete(self, file_name):
         return self.s3_client.delete_object(bucket=self.bucket_name, Key=f'{file_name}')
 

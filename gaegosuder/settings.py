@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 
-from my_settings import SECRET_KEY, DATABASES, AWS_S3_ACCESS_KEY_ID, AWS_S3_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME
+from my_settings import SECRET_KEY, ALGORITHM, DATABASES, AWS_S3_ACCESS_KEY_ID, AWS_S3_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME
 
 import pymysql
 
@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     "commons",
     "applies",
     "core",
-    "django_mysql"
+    "django_mysql",
+    "requests",
 ]
 
 MIDDLEWARE = [

@@ -1,4 +1,3 @@
-from enum import Enum
 
 import functools, time
 from django.db   import connection, reset_queries
@@ -6,7 +5,7 @@ from django.db   import connection, reset_queries
 
 import jwt, json
 
-from my_settings import SECRET_KEY, ALGORITHM
+from django.conf import settings
 from django.http import JsonResponse
 
 from users.models import User
@@ -15,21 +14,47 @@ def login_required(func):
     def wrapper(self, request, *args, **kwargs):
         try:
             access_token = request.headers.get('Authorization', None)
-            payload      = jwt.decode(access_token, SECRET_KEY, algorithms = ALGORITHM)
+            payload      = jwt.decode(access_token, settings.SECRET_KEY, algorithms = settings.ALGORITHM)
             request.user = User.objects.get(id=payload['id'])
         
         except jwt.InvalidSignatureError:
-            return JsonResponse({'message' : 'invalid_signature'}, status=401)
+            return JsonResponse({'MESSAGE' : 'INVALID_SIGNATURE'}, status=401)
         
         except jwt.DecodeError:
-            return JsonResponse({'message' : 'invalid_payload'}, status=401)
+            return JsonResponse({'MESSAGE' : 'INVALID_PAYLOAD'}, status=401)
         
         except User.DoesNotExist:
-            return JsonResponse({'message':'INVALID_USER'}, status = 400)
+            return JsonResponse({'MESSAGE':'INVALID_USER'}, status = 400)
         
         return func(self, request, *args, **kwargs)
     return wrapper
 
+
+def identification_decorator(func):
+    def wrapper(self, request, *args, **kwrags):
+        try:
+            request.user = None
+
+            token = request.headers.get('Authorization', None)
+            if token:
+                payload = jwt.decode(token, settings.SECRET_KEY, settings.ALGORITHM)
+                request.user = User.objects.get(id=payload['id'])
+
+        except User.DoesNotExist:
+            return JsonResponse({'MESSAGE': 'INVALID_USER'}, status=401)
+
+        except jwt.exceptions.DecodeError:
+            return JsonResponse({'MESSAGE': 'INVALID_TOKEN'}, status=401)
+
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({'MESSAGE': 'EXPIRED_TOKEN'}, status=401)
+
+        except jwt.InvalidSignatureError:
+            return JsonResponse({'MESSAGE': 'INVALID_SIGNATURE'}, status=401)
+
+        return func(self, request, *args, **kwrags)
+
+    return wrapper
 
 def query_debugger(func):
     @functools.wraps(func)
@@ -49,9 +74,6 @@ def query_debugger(func):
     return wrapper
 
 
-class UserType(Enum):
-    creator   = "생성함"
-    applicant = "신청함"
 
 
 def get_client_ip(request):

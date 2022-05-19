@@ -1,5 +1,4 @@
 import json
-from tkinter import image_types
 
 from django.http      import JsonResponse
 from django.views     import View
@@ -23,6 +22,12 @@ class FileView(View):
         uploaded_url = s3_client.upload(file)
         return JsonResponse({"MESSAGE": "FILE_UPLOADED", "UPLOADED_URL":uploaded_url}, status=201)
 
+# class FiledownView(View):
+#     def post(self, request):
+#         data = json.loads(request.body)
+#         s3_client = MyS3Client(settings.AWS_S3_ACCESS_KEY_ID, settings.AWS_S3_SECRET_ACCESS_KEY, settings.AWS_STORAGE_BUCKET_NAME) 
+#         s3_client.download(data["uploaded_url"])
+#         return JsonResponse({"MESSAGE": "FILE_DOWNLOADED"}, status=201)
 
 class MetaDataView(View):
     @query_debugger
